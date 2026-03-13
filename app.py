@@ -22,32 +22,15 @@ CORS(app)
 transformer_2180 = Transformer.from_crs("EPSG:4326", "EPSG:2180", always_xy=True)
 
 OPENLS_URL       = "http://mapy.geoportal.gov.pl/openLSgp/geocode"
-WFS_RCN_URL      = "https://mapy.geoportal.gov.pl/wss/service/rcn"
+WFS_RCN_URL       = "https://mapy.geoportal.gov.pl/wss/service/rcn"
+WFS_RCN_PROXY_URL = "https://pillarestate.pl/api/rcn-proxy.php"
+RCN_PROXY_KEY     = "psc-rcn-2026-pillar"
 ULDK_URL         = "https://uldk.gugik.gov.pl/"
 WARSZAWA_WFS_URL = "https://wms2.um.warszawa.pl/geoserver/wfs/wfs"
 
 MS_NS  = 'http://mapserver.gis.umn.edu/mapserver'
 GML_NS = 'http://www.opengis.net/gml/3.2'
 
-# ---------------------------------------------------------------------------
-# CUSTOM DNS - obejście gdy Railway nie rozwiązuje mapy.geoportal.gov.pl
-# ---------------------------------------------------------------------------
-import socket
-from urllib3.util.connection import create_connection as _orig_create_connection
-
-CUSTOM_DNS = {
-    'mapy.geoportal.gov.pl': '91.223.135.44',
-}
-
-_original_getaddrinfo = socket.getaddrinfo
-
-def _patched_getaddrinfo(host, port, *args, **kwargs):
-    if host in CUSTOM_DNS:
-        ip = CUSTOM_DNS[host]
-        return [(socket.AF_INET, socket.SOCK_STREAM, 6, '', (ip, port))]
-    return _original_getaddrinfo(host, port, *args, **kwargs)
-
-socket.getaddrinfo = _patched_getaddrinfo
 
 # ---------------------------------------------------------------------------
 # ANALITYKA API (in-memory)
@@ -272,7 +255,7 @@ def _get_field(feat, *names):
 def _query_rcn_layer(easting, northing, radius_m, layer, count, start):
     bbox = (f"{northing - radius_m},{easting - radius_m},"
             f"{northing + radius_m},{easting + radius_m},EPSG:2180")
-    params = {
+    wfs_params = {
         'SERVICE':      'WFS',
         'VERSION':      '2.0.0',
         'REQUEST':      'GetFeature',
@@ -282,8 +265,18 @@ def _query_rcn_layer(easting, northing, radius_m, layer, count, start):
         'BBOX':         bbox,
         'outputFormat': 'application/gml+xml; version=3.2',
     }
-    r = requests.get(WFS_RCN_URL, params=params, timeout=25,
-                     headers={'User-Agent': 'Mozilla/5.0'})
+    # Próba bezpośrednia do GUGiK
+    try:
+        r = requests.get(WFS_RCN_URL, params=wfs_params, timeout=15,
+                         headers={'User-Agent': 'Mozilla/5.0'})
+        return ET.fromstring(r.content.decode('utf-8', errors='replace'))
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+        pass
+    # Fallback: proxy przez ZenBox (pillarestate.pl)
+    proxy_params = dict(wfs_params)
+    proxy_params['key'] = RCN_PROXY_KEY
+    r = requests.get(WFS_RCN_PROXY_URL, params=proxy_params, timeout=35,
+                     headers={'User-Agent': 'PillarScout/8.0'})
     return ET.fromstring(r.content.decode('utf-8', errors='replace'))
 
 
