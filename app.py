@@ -265,14 +265,7 @@ def _query_rcn_layer(easting, northing, radius_m, layer, count, start):
         'BBOX':         bbox,
         'outputFormat': 'application/gml+xml; version=3.2',
     }
-    # Próba bezpośrednia do GUGiK
-    try:
-        r = requests.get(WFS_RCN_URL, params=wfs_params, timeout=15,
-                         headers={'User-Agent': 'Mozilla/5.0'})
-        return ET.fromstring(r.content.decode('utf-8', errors='replace'))
-    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
-        pass
-    # Fallback: proxy przez ZenBox (pillarestate.pl)
+    # Proxy przez ZenBox (pillarestate.pl) - GUGiK blokuje IP chmurowe
     proxy_params = dict(wfs_params)
     proxy_params['key'] = RCN_PROXY_KEY
     r = requests.get(WFS_RCN_PROXY_URL, params=proxy_params, timeout=35,
