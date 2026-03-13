@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pillar Scout</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600&family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        .font-barlow { font-family: 'Barlow', sans-serif; }
+        .bg-pillar  { background-color: #3F0506; }
+        .text-pillar { color: #3F0506; }
+        .border-pillar { border-color: #3F0506; }
+        .bg-beige-light { background-color: #FEF9E9; }
+        @media print { .no-print { display: none; } }
+    </style>
+</head>
+<body class="bg-beige-light text-slate-900 min-h-screen">
+
+    <!-- Sticky Header -->
+    <header class="sticky top-0 z-50 bg-pillar border-b border-white/10 px-4 py-6 no-print shadow-xl">
+        <div class="max-w-2xl mx-auto flex justify-center items-center">
+            <img src="{{ url_for('static', filename='img/logo.png') }}"
+                 alt="Pillar Partners"
+                 class="h-16 w-auto brightness-0 invert">
+        </div>
+    </header>
+
+    <main class="max-w-2xl mx-auto p-4 pb-20">
+
+        <!-- Section Title -->
+        <div class="mt-[30px] mb-[30px] text-center px-4">
+            <h2 class="text-4xl font-normal font-barlow text-pillar uppercase leading-[1.1] tracking-tight">
+                Rejestr Cen<br>Transakcyjnych
+            </h2>
+        </div>
+
+        <!-- Search Section -->
+        <section class="mb-10 no-print">
+            <form method="POST" class="space-y-3">
+                <div class="relative">
+                    <input type="text" name="address"
+                           value="{{ report.address_raw if report and report.address_raw else (report.address if report and not report.get('error') else '') }}"
+                           placeholder="Wpisz adres, np. Warszawa, Sarmacka 28"
+                           class="w-full bg-white border-2 border-slate-100 rounded-2xl px-5 py-4 pl-12 shadow-sm focus:ring-4 focus:ring-pillar/5 focus:border-pillar outline-none transition-all text-base appearance-none">
+                    <div class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </div>
+                </div>
+
+                <div class="grid gap-2" style="grid-template-columns: 1fr 1fr 1fr auto">
+                    <!-- Promień -->
+                    <div class="relative">
+                        <select name="radius" class="w-full bg-white border-2 border-slate-100 rounded-xl pl-3 pr-7 py-3 appearance-none outline-none focus:border-pillar shadow-sm text-sm font-semibold text-slate-600">
+                            <option value="100"  {{ 'selected' if radius == 100  }}>100 m</option>
+                            <option value="200"  {{ 'selected' if radius == 200  }}>200 m</option>
+                            <option value="300"  {{ 'selected' if radius == 300  }}>300 m</option>
+                            <option value="500"  {{ 'selected' if radius == 500  }}>500 m</option>
+                            <option value="800"  {{ 'selected' if radius == 800  }}>800 m</option>
+                            <option value="1000" {{ 'selected' if radius == 1000 }}>1 km</option>
+                            <option value="2000" {{ 'selected' if radius == 2000 }}>2 km</option>
+                        </select>
+                        <div class="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                        </div>
+                    </div>
+                    <!-- Typ nieruchomości -->
+                    <div class="relative">
+                        <select name="typ" class="w-full bg-white border-2 border-slate-100 rounded-xl pl-3 pr-7 py-3 appearance-none outline-none focus:border-pillar shadow-sm text-sm font-semibold text-slate-600">
+                            <option value="wszystkie"        {{ 'selected' if typ == 'wszystkie' }}>Wszystkie</option>
+                            <option value="mieszkalna"       {{ 'selected' if typ == 'mieszkalna' }}>Mieszkanie</option>
+                            <option value="handlowoUslugowa" {{ 'selected' if typ == 'handlowoUslugowa' }}>Usługowy</option>
+                            <option value="biurowa"          {{ 'selected' if typ == 'biurowa' }}>Biurowy</option>
+                            <option value="inne"             {{ 'selected' if typ == 'inne' }}>Inne</option>
+                            <option value="dzialki"          {{ 'selected' if typ == 'dzialki' }}>Działki</option>
+                        </select>
+                        <div class="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                        </div>
+                    </div>
+                    <!-- Rynek -->
+                    <div class="relative">
+                        <select name="rynek" class="w-full bg-white border-2 border-slate-100 rounded-xl pl-3 pr-7 py-3 appearance-none outline-none focus:border-pillar shadow-sm text-sm font-semibold text-slate-600">
+                            <option value="wszystkie" {{ 'selected' if rynek == 'wszystkie' }}>Wszystkie</option>
+                            <option value="wtorny"    {{ 'selected' if rynek == 'wtorny' }}>Wtórny</option>
+                            <option value="pierwotny" {{ 'selected' if rynek == 'pierwotny' }}>Pierwotny</option>
+                        </select>
+                        <div class="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                        </div>
+                    </div>
+                    <button type="submit"
+                            class="bg-pillar text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-pillar/20 hover:opacity-90 active:scale-95 transition-all uppercase tracking-wide">
+                        Szukaj
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        {% if report %}
+            {% if report.error %}
+
+                <!-- Error -->
+                <div class="bg-red-50 text-red-600 p-4 rounded-xl border border-red-100 text-sm font-medium mb-6">
+                    ⚠️ {{ report.error }}
+                </div>
+
+            {% else %}
+
+                <!-- Results Header -->
+                <div class="mb-6 px-1">
+                    <h2 class="text-2xl font-black text-pillar leading-tight mb-1">{{ report.address }}</h2>
+                    <div class="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] flex-wrap">
+                        <span>Okolica: {{ report.radius }} m</span>
+                        {% if report.stats %}
+                            <span class="w-1 h-1 bg-slate-300 rounded-full"></span>
+                            <span>{{ report.stats.count }} transakcji</span>
+                        {% endif %}
+                        <span class="w-1 h-1 bg-slate-300 rounded-full"></span>
+                        <span class="text-slate-300">źródło: {{ report.geocode_source }}</span>
+                    </div>
+                    {% if report.data_source == 'local' %}
+                    <div class="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-[11px] font-semibold">
+                        <span class="w-2 h-2 rounded-full bg-amber-400 shrink-0"></span>
+                        Dane z lokalnej bazy{% if report.db_last_crawl %} — stan na: {{ report.db_last_crawl }}{% endif %}. API GUGiK tymczasowo niedostępne.
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- ============================================================ -->
+                <!-- SEKCJA: PARAMETRY BUDYNKU (EGiB)                             -->
+                <!-- ============================================================ -->
+                <div class="mb-8">
+                    <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] px-1 mb-3">
+                        Parametry budynku
+                    </h3>
+
+                    {% if report.building %}
+                    <div class="bg-white border border-slate-100 rounded-[2rem] overflow-hidden shadow-sm">
+                        <table class="w-full text-sm">
+                            <tbody class="divide-y divide-slate-50">
+                                {% if report.building.wojewodztwo %}
+                                <tr>
+                                    <td class="px-5 py-2.5 text-slate-400 font-medium w-1/2">Województwo</td>
+                                    <td class="px-5 py-2.5 text-slate-700 font-semibold capitalize">{{ report.building.wojewodztwo }}</td>
+                                </tr>
+                                {% endif %}
+                                {% if report.building.gmina %}
+                                <tr>
+                                    <td class="px-5 py-2.5 text-slate-400 font-medium">Gmina / Miasto</td>
+                                    <td class="px-5 py-2.5 text-slate-700 font-semibold">{{ report.building.gmina }}</td>
+                                </tr>
+                                {% endif %}
+                                {% if report.building.dzielnica %}
+                                <tr>
+                                    <td class="px-5 py-2.5 text-slate-400 font-medium">Dzielnica</td>
+                                    <td class="px-5 py-2.5 text-slate-700 font-semibold">{{ report.building.dzielnica }}</td>
+                                </tr>
+                                {% endif %}
+                                {% if report.building.obreb %}
+                                <tr>
+                                    <td class="px-5 py-2.5 text-slate-400 font-medium">Obręb ewidencyjny</td>
+                                    <td class="px-5 py-2.5 text-slate-700 font-semibold">{{ report.building.obreb }}</td>
+                                </tr>
+                                {% endif %}
+                                {% if report.building.nr_dzialki %}
+                                <tr>
+                                    <td class="px-5 py-2.5 text-slate-400 font-medium">Nr działki</td>
+                                    <td class="px-5 py-2.5 text-slate-700 font-semibold">{{ report.building.nr_dzialki }}</td>
+                                </tr>
+                                {% endif %}
+                                {% if report.building.nr_budynku %}
+                                <tr>
+                                    <td class="px-5 py-2.5 text-slate-400 font-medium">Budynek nr</td>
+                                    <td class="px-5 py-2.5 text-slate-700 font-semibold">{{ report.building.nr_budynku }}</td>
+                                </tr>
+                                {% endif %}
+                                {% if report.building.kondygnacje %}
+                                <tr>
+                                    <td class="px-5 py-2.5 text-slate-400 font-medium">Kondygnacje naziemne</td>
+                                    <td class="px-5 py-2.5 text-slate-700 font-semibold">{{ report.building.kondygnacje }}</td>
+                                </tr>
+                                {% endif %}
+                                {% if report.building.id %}
+                                <tr class="bg-slate-50/50">
+                                    <td class="px-5 py-2.5 text-slate-400 font-medium">Identyfikator</td>
+                                    <td class="px-5 py-2.5 text-slate-500 font-mono text-xs">{{ report.building.id }}</td>
+                                </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="bg-white border border-slate-100 rounded-[2rem] p-5 shadow-sm">
+                        <p class="text-sm text-slate-400 font-medium">
+                            Brak danych katastralnych dla tego adresu.
+                        </p>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- ============================================================ -->
+                <!-- SEKCJA: STATYSTYKI CENOWE                                    -->
+                <!-- ============================================================ -->
+                {% if report.stats %}
+                <div class="grid grid-cols-2 gap-3 mb-8">
+
+                    <!-- Średnia — duży kafelek -->
+                    <div class="col-span-2 bg-pillar rounded-3xl p-6 text-white shadow-xl shadow-pillar/20 relative overflow-hidden">
+                        <p class="text-white/60 text-[10px] font-bold uppercase tracking-widest mb-1">
+                            Średnia cena transakcyjna
+                            {% if report.stats.recent_count %}&nbsp;· ostatnie 6 mies. ({{ report.stats.recent_count }} trans.){% endif %}
+                        </p>
+                        <p class="text-4xl font-black">
+                            {% if report.stats.avg %}{{ "{:,.0f}".format(report.stats.avg).replace(",", " ") }}<span class="text-base font-medium opacity-50">zł/m²</span>{% else %}<span class="text-2xl opacity-60">brak transakcji w tym okresie</span>{% endif %}
+                        </p>
+                        <div class="absolute -right-4 -bottom-4 opacity-10">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-24 w-24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                            </svg>
+                        </div>
+                    </div>
+
+                    <!-- Min -->
+                    <div class="bg-white rounded-2xl p-4 border border-pillar/5 shadow-sm">
+                        <p class="text-slate-400 text-[9px] font-bold uppercase tracking-widest mb-1">Cena Min.</p>
+                        <p class="text-lg font-black text-pillar">
+                            {% if report.stats.min %}{{ "{:,.0f}".format(report.stats.min).replace(",", " ") }}<span class="text-[10px] font-medium opacity-40">zł</span>{% else %}—{% endif %}
+                        </p>
+                    </div>
+
+                    <!-- Max -->
+                    <div class="bg-white rounded-2xl p-4 border border-pillar/5 shadow-sm">
+                        <p class="text-slate-400 text-[9px] font-bold uppercase tracking-widest mb-1">Cena Max.</p>
+                        <p class="text-lg font-black text-pillar">
+                            {% if report.stats.max %}{{ "{:,.0f}".format(report.stats.max).replace(",", " ") }}<span class="text-[10px] font-medium opacity-40">zł</span>{% else %}—{% endif %}
+                        </p>
+                    </div>
+
+                </div>
+                {% else %}
+                <div class="mb-8 bg-amber-50 text-amber-700 p-4 rounded-xl border border-amber-100 text-sm font-medium">
+                    ⚠️ Brak transakcji w promieniu {{ report.radius }} m. Spróbuj zwiększyć promień.
+                </div>
+                {% endif %}
+
+                <!-- ============================================================ -->
+                <!-- SEKCJA: LISTA TRANSAKCJI                                     -->
+                <!-- ============================================================ -->
+                {% if report.transactions %}
+                <div class="space-y-4">
+                    <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] px-1 mb-2">
+                        Lista Transakcji
+                    </h3>
+                    {% for t in report.transactions %}
+                    <div class="bg-white border border-slate-100 rounded-[2rem] shadow-sm overflow-hidden active:scale-[0.98] transition-all">
+
+                        <!-- Cena całkowita & data -->
+                        <div class="flex justify-between items-end px-5 pt-4 pb-4">
+                            <div>
+                                <p class="text-[9px] font-bold text-slate-300 uppercase tracking-widest mb-1">Cena całkowita</p>
+                                <p class="text-3xl font-black text-pillar tracking-tighter leading-none">
+                                    {{ "{:,.0f}".format(t.cena).replace(",", " ") }}<span class="text-sm font-bold opacity-30 ml-1">PLN</span>
+                                </p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-[9px] font-bold text-slate-300 uppercase tracking-widest mb-1">Data</p>
+                                <p class="text-base font-semibold text-slate-600">{{ t.data }}</p>
+                            </div>
+                        </div>
+
+                        <!-- Parametry — cena/m², metraż, pokoje, piętro -->
+                        <div class="grid grid-cols-4 border-t border-slate-100">
+                            <div class="px-3 py-3 flex flex-col items-center text-center">
+                                <span class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Cena / m²</span>
+                                <span class="text-xl font-medium text-slate-900">
+                                    {% if t.cena_m2 %}{{ "{:,.0f}".format(t.cena_m2).replace(",", " ") }}<span class="text-xs font-normal opacity-40"> zł</span>{% else %}<span class="text-slate-300">—</span>{% endif %}
+                                </span>
+                            </div>
+                            <div class="px-3 py-3 flex flex-col items-center text-center border-l border-slate-100">
+                                <span class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{% if t.layer_type == 'dzialki' %}Pow. działki{% else %}Metraż{% endif %}</span>
+                                <span class="text-xl font-medium text-slate-900">
+                                    {% if t.metraz %}{{ t.metraz }}<span class="text-xs font-normal opacity-40"> m²</span>{% else %}<span class="text-slate-300">—</span>{% endif %}
+                                </span>
+                            </div>
+                            {% if t.layer_type != 'dzialki' %}
+                            <div class="px-3 py-3 flex flex-col items-center text-center border-l border-slate-100">
+                                <span class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Pokoje</span>
+                                <span class="text-xl font-medium text-slate-900">
+                                    {% if t.pokoje and t.pokoje != '0' %}{{ t.pokoje }}{% else %}<span class="text-slate-300">—</span>{% endif %}
+                                </span>
+                            </div>
+                            <div class="px-3 py-3 flex flex-col items-center text-center border-l border-slate-100">
+                                <span class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Piętro</span>
+                                <span class="text-xl font-medium text-slate-900">
+                                    {% if t.pietro %}{{ t.pietro }}{% else %}<span class="text-slate-300">—</span>{% endif %}
+                                </span>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Adres + pow. przynależna -->
+                        <div class="grid grid-cols-2 border-t border-slate-100 bg-slate-50/40">
+                            <div class="px-4 py-3 flex flex-col justify-center">
+                                <span class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Adres</span>
+                                <span class="text-lg font-medium text-slate-900 leading-tight">
+                                    {% if t.adres %}{{ t.adres }}{% else %}<span class="text-slate-300">—</span>{% endif %}
+                                </span>
+                            </div>
+                            {% if t.layer_type == 'dzialki' %}
+                            <div class="px-3 py-3 flex flex-col items-center justify-center text-center border-l border-slate-100">
+                                <span class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Rodzaj</span>
+                                <span class="text-sm font-semibold text-slate-700">
+                                    {% set ru = t.rodzaj_uzytku %}
+                                    {% if ru == 'gruntyZabudowaneIZurbanizowane' %}Budowlana
+                                    {% elif ru == 'gruntyRolne' %}Rolna
+                                    {% elif ru == 'lasy' %}Leśna
+                                    {% elif ru == 'gruntyPodWodami' %}Pod wodami
+                                    {% elif ru %}{{ ru }}
+                                    {% else %}<span class="text-slate-300">—</span>
+                                    {% endif %}
+                                </span>
+                            </div>
+                            {% else %}
+                            <div class="px-3 py-3 flex flex-col items-center text-center border-l border-slate-100">
+                                <span class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Pow. przynależna</span>
+                                <span class="text-xl font-medium text-slate-900">
+                                    {% if t.pow_przyn %}{{ t.pow_przyn }}<span class="text-xs font-normal opacity-40"> m²</span>{% else %}<span class="text-slate-300">—</span>{% endif %}
+                                </span>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+            {% endif %}
+        {% endif %}
+
+    </main>
+
+</body>
+</html>
