@@ -627,6 +627,60 @@ def api_search():
 
 
 # ---------------------------------------------------------------------------
+# API DEBUG - diagnostyka RCN
+# ---------------------------------------------------------------------------
+
+@app.route("/api/debug")
+def api_debug():
+    addr   = request.args.get("address", "Warszawa, Marysienki 19").strip()
+    radius = int(request.args.get("radius", 300))
+
+    geo = smart_geocode(addr)
+    if not geo:
+        return jsonify({"error": "Geocode failed"}), 404
+
+    lon, lat = geo["lon"], geo["lat"]
+    easting, northing = transformer_2180.transform(lon, lat)
+
+    bbox = (f"{northing - radius},{easting - radius},"
+            f"{northing + radius},{easting + radius},EPSG:2180")
+
+    debug_info = {
+        "address": geo["canonical"],
+        "lon": lon, "lat": lat,
+        "easting": round(easting, 1),
+        "northing": round(northing, 1),
+        "bbox": bbox,
+        "radius": radius,
+    }
+
+    # Raw request do API RCN
+    for layer in ['ms:lokale', 'ms:dzialki']:
+        params = {
+            'SERVICE': 'WFS', 'VERSION': '2.0.0', 'REQUEST': 'GetFeature',
+            'TYPENAMES': layer, 'COUNT': '10', 'STARTINDEX': '0',
+            'BBOX': bbox,
+            'outputFormat': 'application/gml+xml; version=3.2',
+        }
+        try:
+            r = requests.get(WFS_RCN_URL, params=params, timeout=25,
+                             headers={'User-Agent': 'Mozilla/5.0'})
+            raw_text = r.content.decode('utf-8', errors='replace')[:3000]
+            root = ET.fromstring(r.content.decode('utf-8', errors='replace'))
+            members = [m for m in root if 'member' in m.tag.lower()]
+            debug_info[layer] = {
+                "status_code": r.status_code,
+                "members_count": len(members),
+                "url": r.url[:500],
+                "raw_first_2000": raw_text[:2000],
+            }
+        except Exception as e:
+            debug_info[layer] = {"error": str(e)}
+
+    return jsonify(debug_info)
+
+
+# ---------------------------------------------------------------------------
 # API STATS - ANALITYKA
 # ---------------------------------------------------------------------------
 
