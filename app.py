@@ -23,13 +23,31 @@ transformer_2180 = Transformer.from_crs("EPSG:4326", "EPSG:2180", always_xy=True
 
 OPENLS_URL       = "http://mapy.geoportal.gov.pl/openLSgp/geocode"
 WFS_RCN_URL      = "https://mapy.geoportal.gov.pl/wss/service/rcn"
-WFS_RCN_URL_IP   = "https://91.223.135.44/wss/service/rcn"
-GUGIK_HOST       = "mapy.geoportal.gov.pl"
 ULDK_URL         = "https://uldk.gugik.gov.pl/"
 WARSZAWA_WFS_URL = "https://wms2.um.warszawa.pl/geoserver/wfs/wfs"
 
 MS_NS  = 'http://mapserver.gis.umn.edu/mapserver'
 GML_NS = 'http://www.opengis.net/gml/3.2'
+
+# ---------------------------------------------------------------------------
+# CUSTOM DNS - obejście gdy Railway nie rozwiązuje mapy.geoportal.gov.pl
+# ---------------------------------------------------------------------------
+import socket
+from urllib3.util.connection import create_connection as _orig_create_connection
+
+CUSTOM_DNS = {
+    'mapy.geoportal.gov.pl': '91.223.135.44',
+}
+
+_original_getaddrinfo = socket.getaddrinfo
+
+def _patched_getaddrinfo(host, port, *args, **kwargs):
+    if host in CUSTOM_DNS:
+        ip = CUSTOM_DNS[host]
+        return [(socket.AF_INET, socket.SOCK_STREAM, 6, '', (ip, port))]
+    return _original_getaddrinfo(host, port, *args, **kwargs)
+
+socket.getaddrinfo = _patched_getaddrinfo
 
 # ---------------------------------------------------------------------------
 # ANALITYKA API (in-memory)
@@ -264,19 +282,9 @@ def _query_rcn_layer(easting, northing, radius_m, layer, count, start):
         'BBOX':         bbox,
         'outputFormat': 'application/gml+xml; version=3.2',
     }
-    # Najpierw próba normalnego DNS
-    try:
-        r = requests.get(WFS_RCN_URL, params=params, timeout=25,
-                         headers={'User-Agent': 'Mozilla/5.0'})
-        return ET.fromstring(r.content.decode('utf-8', errors='replace'))
-    except requests.exceptions.ConnectionError:
-        # Fallback: bezpośredni IP z nagłówkiem Host (obejście DNS)
-        import urllib3
-        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-        r = requests.get(WFS_RCN_URL_IP, params=params, timeout=25,
-                         headers={'User-Agent': 'Mozilla/5.0', 'Host': GUGIK_HOST},
-                         verify=False)
-        return ET.fromstring(r.content.decode('utf-8', errors='replace'))
+    r = requests.get(WFS_RCN_URL, params=params, timeout=25,
+                     headers={'User-Agent': 'Mozilla/5.0'})
+    return ET.fromstring(r.content.decode('utf-8', errors='replace'))
 
 
 def _parse_adres(raw: str) -> str:
@@ -666,9 +674,7 @@ def api_debug():
         "radius": radius,
     }
 
-    # Raw request do API RCN (z fallback na IP)
-    import urllib3
-    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    # Raw request do API RCN
     for layer in ['ms:lokale', 'ms:dzialki']:
         params = {
             'SERVICE': 'WFS', 'VERSION': '2.0.0', 'REQUEST': 'GetFeature',
@@ -677,13 +683,8 @@ def api_debug():
             'outputFormat': 'application/gml+xml; version=3.2',
         }
         try:
-            try:
-                r = requests.get(WFS_RCN_URL, params=params, timeout=25,
-                                 headers={'User-Agent': 'Mozilla/5.0'})
-            except requests.exceptions.ConnectionError:
-                r = requests.get(WFS_RCN_URL_IP, params=params, timeout=25,
-                                 headers={'User-Agent': 'Mozilla/5.0', 'Host': GUGIK_HOST},
-                                 verify=False)
+            r = requests.get(WFS_RCN_URL, params=params, timeout=25,
+                             headers={'User-Agent': 'Mozilla/5.0'})
             raw_text = r.content.decode('utf-8', errors='replace')[:3000]
             root = ET.fromstring(r.content.decode('utf-8', errors='replace'))
             members = [m for m in root if 'member' in m.tag.lower()]
