@@ -464,23 +464,21 @@ def get_rcn_prices(lon: float, lat: float, radius: int,
             'rodzaj_uzytku': rec.get('rodzaj_uzytku', '') if layer == 'dzialki' else '',
         })
 
-    # Filtr: tylko transakcje z ostatnich 12 miesiecy
-    cutoff_12m = (date.today() - timedelta(days=365)).isoformat()
-    transactions = [t for t in transactions if t['data'] >= cutoff_12m]
-
     # Stabilne sortowanie: data (malejaco), potem cena (rosnaco), potem adres
     transactions.sort(key=lambda x: (x['data'] or '', x['cena'] or 0, x.get('adres', '')), reverse=True)
     transactions = transactions[:100]
 
     stats = None
     if transactions:
+        cutoff = (date.today() - timedelta(days=365)).isoformat()
+        recent = [t for t in transactions if t['data'] >= cutoff and t['cena_m2']]
         m2_prices = [t['cena_m2'] for t in transactions if t['cena_m2']]
         stats = {
             'avg':          round(sum(m2_prices) / len(m2_prices)) if m2_prices else None,
             'min':          round(min(m2_prices)) if m2_prices else None,
             'max':          round(max(m2_prices)) if m2_prices else None,
             'count':        len(transactions),
-            'recent_count': len(transactions),
+            'recent_count': len(recent),
         }
 
     return transactions, stats
