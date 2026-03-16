@@ -304,15 +304,21 @@ def get_rcn_prices(lon: float, lat: float, radius: int,
 
     def fetch_lokale():
         recs = []
+        seen_ids = set()
         start = 0
         while True:
             try:
-                root    = _query_rcn_layer(easting, northing, radius, 'ms:lokale', 200, start)
+                root    = _query_rcn_layer(easting, northing, radius, 'ms:lokale', 1000, start)
                 members = [m for m in root if 'member' in m.tag.lower()]
                 if not members:
                     break
                 for member in members:
                     for feat in member:
+                        gml_id = feat.attrib.get('{http://www.opengis.net/gml/3.2}id', '')
+                        if gml_id in seen_ids:
+                            continue
+                        if gml_id:
+                            seen_ids.add(gml_id)
                         n_c, e_c = _get_centroid(feat)
                         dist = (round(math.sqrt((northing - n_c) ** 2 + (easting - e_c) ** 2))
                                 if n_c is not None else None)
@@ -329,24 +335,30 @@ def get_rcn_prices(lon: float, lat: float, radius: int,
                             'lok_pow_przyn': _get_field(feat, 'lok_pow_przyn'),
                             'adres_raw':     _get_field(feat, 'lok_adres'),
                         })
-                if len(members) < 200:
+                if len(members) < 1000:
                     break
-                start += 200
+                start += 1000
             except Exception:
                 break
         return recs
 
     def fetch_dzialki():
         recs = []
+        seen_ids = set()
         start = 0
         while True:
             try:
-                root    = _query_rcn_layer(easting, northing, radius, 'ms:dzialki', 200, start)
+                root    = _query_rcn_layer(easting, northing, radius, 'ms:dzialki', 1000, start)
                 members = [m for m in root if 'member' in m.tag.lower()]
                 if not members:
                     break
                 for member in members:
                     for feat in member:
+                        gml_id = feat.attrib.get('{http://www.opengis.net/gml/3.2}id', '')
+                        if gml_id in seen_ids:
+                            continue
+                        if gml_id:
+                            seen_ids.add(gml_id)
                         n_c, e_c = _get_centroid(feat)
                         dist = (round(math.sqrt((northing - n_c) ** 2 + (easting - e_c) ** 2))
                                 if n_c is not None else None)
@@ -371,9 +383,9 @@ def get_rcn_prices(lon: float, lat: float, radius: int,
                             'adres_raw':     _get_field(feat, 'dzi_nr_dzialki', 'dzi_id_dzialki'),
                             'rodzaj_uzytku': _get_field(feat, 'dzi_sposob_uzyt'),
                         })
-                if len(members) < 200:
+                if len(members) < 1000:
                     break
-                start += 200
+                start += 1000
             except Exception:
                 break
         return recs
@@ -464,9 +476,11 @@ def get_rcn_prices(lon: float, lat: float, radius: int,
             'rodzaj_uzytku': rec.get('rodzaj_uzytku', '') if layer == 'dzialki' else '',
         })
 
+    total_before_limit = len(transactions)
+
     # Stabilne sortowanie: data (malejaco), potem cena (rosnaco), potem adres
     transactions.sort(key=lambda x: (x['data'] or '', x['cena'] or 0, x.get('adres', '')), reverse=True)
-    transactions = transactions[:100]
+    transactions = transactions[:200]
 
     stats = None
     if transactions:
@@ -478,6 +492,7 @@ def get_rcn_prices(lon: float, lat: float, radius: int,
             'min':          round(min(m2_prices)) if m2_prices else None,
             'max':          round(max(m2_prices)) if m2_prices else None,
             'count':        len(transactions),
+            'raw_count':    total_before_limit,
             'recent_count': len(recent),
         }
 
